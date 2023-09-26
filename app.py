@@ -61,6 +61,9 @@ AZURE_OPENAI_EMBEDDING_ENDPOINT = os.environ.get("AZURE_OPENAI_EMBEDDING_ENDPOIN
 AZURE_OPENAI_EMBEDDING_KEY = os.environ.get("AZURE_OPENAI_EMBEDDING_KEY")
 
 
+APPINSIGHTS_INSTRUMENTATIONKEY = os.environ.get("APPINSIGHTS_INSTRUMENTATIONKEY", None)
+
+
 SHOULD_STREAM = True if AZURE_OPENAI_STREAM.lower() == "true" else False
 
 # CosmosDB Integration Settings
@@ -68,6 +71,22 @@ AZURE_COSMOSDB_DATABASE = os.environ.get("AZURE_COSMOSDB_DATABASE")
 AZURE_COSMOSDB_ACCOUNT = os.environ.get("AZURE_COSMOSDB_ACCOUNT")
 AZURE_COSMOSDB_CONVERSATIONS_CONTAINER = os.environ.get("AZURE_COSMOSDB_CONVERSATIONS_CONTAINER")
 AZURE_COSMOSDB_ACCOUNT_KEY = os.environ.get("AZURE_COSMOSDB_ACCOUNT_KEY")
+
+from opencensus.ext.azure.log_exporter import AzureLogHandler
+
+logger = logging.getLogger(__name__)
+logger.addHandler(AzureLogHandler(connection_string="InstrumentationKey=;IngestionEndpoint=https://eastus-1.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus.livediagnostics.monitor.azure.com/"))
+
+
+from opencensus.ext.azure.trace_exporter import AzureExporter
+from opencensus.ext.flask.flask_middleware import FlaskMiddleware
+from opencensus.trace.samplers import ProbabilitySampler
+
+middleware = FlaskMiddleware(
+    app,
+    exporter=AzureExporter(connection_string="InstrumentationKey="),
+    sampler=ProbabilitySampler(rate=1.0),
+)
 
 # Initialize a CosmosDB client with AAD auth and containers
 cosmos_conversation_client = None
@@ -357,6 +376,7 @@ def conversation_internal(request_body):
 def add_conversation():
     authenticated_user = get_authenticated_user_details(request_headers=request.headers)
     user_id = authenticated_user['user_principal_id']
+    logger.warning(f"user: {authenticated_user['user_name']}, route: /history/generate[POST]")
 
     ## check request for conversation_id
     conversation_id = request.json.get("conversation_id", None)
@@ -402,6 +422,7 @@ def add_conversation():
 def update_conversation():
     authenticated_user = get_authenticated_user_details(request_headers=request.headers)
     user_id = authenticated_user['user_principal_id']
+    logger.warning(f"user: {authenticated_user['user_name']}, route: /history/update[POST]")
 
     ## check request for conversation_id
     conversation_id = request.json.get("conversation_id", None)
@@ -448,6 +469,7 @@ def delete_conversation():
     ## get the user id from the request headers
     authenticated_user = get_authenticated_user_details(request_headers=request.headers)
     user_id = authenticated_user['user_principal_id']
+    logger.warning(f"user: {authenticated_user['user_name']}, route: /history/delete[DELETE]")
     
     ## check request for conversation_id
     conversation_id = request.json.get("conversation_id", None)
@@ -470,6 +492,7 @@ def delete_conversation():
 def list_conversations():
     authenticated_user = get_authenticated_user_details(request_headers=request.headers)
     user_id = authenticated_user['user_principal_id']
+    logger.warning(f"user: {authenticated_user['user_name']}, route: /history/list[LIST]")
 
     ## get the conversations from cosmos
     conversations = cosmos_conversation_client.get_conversations(user_id)
@@ -484,7 +507,7 @@ def list_conversations():
 def get_conversation():
     authenticated_user = get_authenticated_user_details(request_headers=request.headers)
     user_id = authenticated_user['user_principal_id']
-
+    logger.warning(f"user: {authenticated_user['user_name']}, route: /history/read[GET]")
     ## check request for conversation_id
     conversation_id = request.json.get("conversation_id", None)
     
@@ -509,6 +532,7 @@ def get_conversation():
 def rename_conversation():
     authenticated_user = get_authenticated_user_details(request_headers=request.headers)
     user_id = authenticated_user['user_principal_id']
+    logger.warning(f"user: {authenticated_user['user_name']}, route: /history/rename[POST]")
 
     ## check request for conversation_id
     conversation_id = request.json.get("conversation_id", None)
@@ -535,6 +559,7 @@ def delete_all_conversations():
     ## get the user id from the request headers
     authenticated_user = get_authenticated_user_details(request_headers=request.headers)
     user_id = authenticated_user['user_principal_id']
+    logger.warning(f"user: {authenticated_user['user_name']}, route: /history/delete_all[DELETE]")
 
     # get conversations for user
     try:
@@ -562,6 +587,7 @@ def clear_messages():
     ## get the user id from the request headers
     authenticated_user = get_authenticated_user_details(request_headers=request.headers)
     user_id = authenticated_user['user_principal_id']
+    logger.warning(f"user: {authenticated_user['user_name']}, route: /history/clear[POST]")
     
     ## check request for conversation_id
     conversation_id = request.json.get("conversation_id", None)
@@ -612,6 +638,44 @@ def generate_title(conversation_messages):
         return title
     except Exception as e:
         return messages[-2]['content']
+    
+
+
+# This is only for logging telemetry to Application Insights
+
+@app.route("/readout", methods=["GET"])
+def get_voice():
+    authenticated_user = get_authenticated_user_details(request_headers=request.headers)
+    logger.warning(f"user: {authenticated_user['user_name']}, route: /readout[GET]")
+        
+    return jsonify({"message": "Successfully logged"}), 200
+
+
+
+@app.route("/feedback", methods=["POST"])
+def send_feedback():
+    ## get the user id from the request headers
+    authenticated_user = get_authenticated_user_details(request_headers=request.headers)
+    logger.warning(f"user: {authenticated_user['user_name']}, route: /feedback[POST]")
+    
+    ## check request for conversation_id
+    conversation_context = request.json.get('conversation_context', None)
+    
+    try: 
+        if not conversation_context:
+            return jsonify({"error": "conversation_context is required"}), 400
+        
+        ## delete the conversation messages from cosmos
+        properties = {'custom_dimensions': {'user': authenticated_user['user_name'], 'action': conversation_context.get('action', None), 'user_input': conversation_context.get('user_input',None), 'llm_output': conversation_context.get('llm_output', None), 'feedback': conversation_context.get('feedback', None)}}
+
+        # Use properties in logging statements
+        logger.warning('Feedback', extra=properties)
+
+        return jsonify({"message": "Successfully logged the feedback"}), 200
+    except Exception as e:
+        logging.exception("Exception in /feedback")
+        return jsonify({"error": str(e)}), 500 
 
 if __name__ == "__main__":
     app.run()
+

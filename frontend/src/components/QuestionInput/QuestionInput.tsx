@@ -1,8 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Stack, TextField } from "@fluentui/react";
 import { SendRegular } from "@fluentui/react-icons";
 import Send from "../../assets/Send.svg";
 import styles from "./QuestionInput.module.css";
+// import {VoiceInput} from "../common/VoiceInputAlt";
+import { initializeIcons } from '@fluentui/font-icons-mdl2';
+import { IconButton } from '@fluentui/react/lib/Button';
+import useSpeechToText from 'react-hook-speech-to-text';
+
 
 interface Props {
     onSend: (question: string, id?: string) => void;
@@ -14,6 +19,33 @@ interface Props {
 
 export const QuestionInput = ({ onSend, disabled, placeholder, clearOnSend, conversationId }: Props) => {
     const [question, setQuestion] = useState<string>("");
+
+    const isChrome = /Chrome/.test(navigator.userAgent);
+
+
+    const handleTranscriptChange = (newTranscript) => {
+        setQuestion(newTranscript);
+    };
+
+
+
+    initializeIcons();
+    const {
+      error,
+      interimResult,
+      isRecording,
+      results,
+      startSpeechToText,
+      stopSpeechToText,
+      setResults
+    } = useSpeechToText({
+      continuous: true,
+      useLegacyResults: false
+    });
+    const MyMicButton = () => <IconButton iconProps={{ iconName: 'Microphone' }} title="Speak (Chrome browser only)" ariaLabel="Microphone" onClick={startSpeechToText} />;
+    const StopButton = () => <IconButton iconProps={{ iconName: 'Stop' }} title="Stop" ariaLabel="Microphone" onClick={stopSpeechToText} />;
+
+
 
     const sendQuestion = () => {
         if (disabled || !question.trim()) {
@@ -29,6 +61,7 @@ export const QuestionInput = ({ onSend, disabled, placeholder, clearOnSend, conv
         if (clearOnSend) {
             setQuestion("");
         }
+        setResults([]);
     };
 
     const onEnterPress = (ev: React.KeyboardEvent<Element>) => {
@@ -43,6 +76,11 @@ export const QuestionInput = ({ onSend, disabled, placeholder, clearOnSend, conv
     };
 
     const sendQuestionDisabled = disabled || !question.trim();
+
+    useEffect(() => {
+        const concatenatedTranscripts = results.map((result) => result.transcript).join(' ');
+        setQuestion(concatenatedTranscripts);
+      }, [results]);
 
     return (
         <Stack horizontal className={styles.questionInputContainer}>
@@ -70,6 +108,10 @@ export const QuestionInput = ({ onSend, disabled, placeholder, clearOnSend, conv
                 }
             </div>
             <div className={styles.questionInputBottomBorder} />
+            {/* <VoiceInput onTranscriptChange={handleTranscriptChange}/> */}
+            <div>
+                {isRecording ?<StopButton />: <MyMicButton/>}
+            </div>
         </Stack>
     );
 };

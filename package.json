@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@types/react-speech-recognition": "^3.9.2",
+    "microsoft-cognitiveservices-speech-sdk": "^1.32.0"
+  }
+}

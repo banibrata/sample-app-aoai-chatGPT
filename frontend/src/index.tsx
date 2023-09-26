@@ -9,6 +9,7 @@ import Layout from "./pages/layout/Layout";
 import NoPage from "./pages/NoPage";
 import Chat from "./pages/chat/Chat";
 import { AppStateProvider } from "./state/AppProvider";
+import regeneratorRuntime from 'regenerator-runtime/runtime';
 
 initializeIcons();
 

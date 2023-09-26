@@ -3,11 +3,13 @@ import { cloneDeep } from "lodash-es";
 
 
 type ParsedAnswer = {
+    question: string;
     citations: Citation[];
     markdownFormatText: string;
 };
 
 export function parseAnswer(answer: AskResponse): ParsedAnswer {
+    const question = answer.question;
     let answerText = answer.answer;
     const citationLinks = answerText.match(/\[(doc\d\d?\d?)]/g);
 
@@ -29,6 +31,7 @@ export function parseAnswer(answer: AskResponse): ParsedAnswer {
 
 
     return {
+        question: question,
         citations: filteredCitations,
         markdownFormatText: answerText
     };

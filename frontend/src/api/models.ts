@@ -1,5 +1,6 @@
 export type AskResponse = {
     answer: string;
+    question: string;
     citations: Citation[];
     error?: string;
 };
@@ -92,4 +93,12 @@ export enum ChatHistoryLoadingState {
 export type ErrorMessage = {
     title: string,
     subtitle: string
+}
+
+export type Feedback = {
+    action: string,
+    user_input: string,
+    llm_output: string,
+    feedback: string
+
 }

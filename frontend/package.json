@@ -16,9 +16,12 @@
     "lodash-es": "^4.17.21",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-hook-speech-to-text": "^0.8.0",
     "react-markdown": "^7.0.1",
     "react-router-dom": "^6.8.1",
+    "react-speech-recognition": "^3.10.0",
     "react-uuid": "^2.0.0",
+    "regenerator-runtime": "^0.14.0",
     "rehype-raw": "^6.1.1",
     "remark-gfm": "^3.0.1",
     "remark-supersub": "^1.0.0"

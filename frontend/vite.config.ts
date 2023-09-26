@@ -8,7 +8,7 @@ export default defineConfig({
         outDir: "../static",
         emptyOutDir: true,
         sourcemap: true
-    },
+      },
     server: {
         proxy: {
             "/ask": "http://localhost:5000",

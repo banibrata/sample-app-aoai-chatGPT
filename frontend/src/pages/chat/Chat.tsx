@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, useContext, useLayoutEffect } from "react";
 import { CommandBarButton, IconButton, Dialog, DialogType, Stack } from "@fluentui/react";
-import { DismissRegular, SquareRegular, ShieldLockRegular, ErrorCircleRegular } from "@fluentui/react-icons";
+import { SquareRegular, ShieldLockRegular, ErrorCircleRegular } from "@fluentui/react-icons";
 
 import ReactMarkdown from "react-markdown";
 import remarkGfm from 'remark-gfm'
@@ -515,6 +515,19 @@ const Chat = () => {
         return [];
     }
 
+    const parseUserMessageFromResponse = (message: ChatMessage) => {
+        if (message?.role && message?.role === "user") {
+            try {
+                const userMessage = message.content;
+                return userMessage;
+            }
+            catch {
+                return "";
+            }
+        }
+        return "";
+    }
+
     const disabledButton = () => {
         return isLoading || (messages && messages.length === 0) || clearingChat || appStateContext?.state.chatHistoryLoadingState === ChatHistoryLoadingState.Loading
     }
@@ -544,8 +557,10 @@ const Chat = () => {
                                     className={styles.chatIcon}
                                     aria-hidden="true"
                                 />
-                                <h1 className={styles.chatEmptyStateTitle}>Start chatting</h1>
-                                <h2 className={styles.chatEmptyStateSubtitle}>This chatbot is configured to answer your questions</h2>
+                                <h1 className={styles.chatEmptyStateTitle}>Let me be part of your DRI journey</h1>
+                                <h2 className={styles.chatEmptyStateSubtitle}>I source my knowledge from <a href="https://msdata.visualstudio.com/Vienna/_git/vienna-wiki?version=GBmaster" target="_blank">Vienna-Wiki</a>, <a href="https://eng.ms/docs/cloud-ai-platform/ai-platform/ai-platform-ml-platform" target="_blank">EngHub</a>, <a href="https://learn.microsoft.com/en-us/azure/machine-learning/?view=azureml-api-2" target="_blank">Azure ML Public Docs</a></h2>
+                                <h2 className={styles.chatEmptyStateSubtitle}> And of course my trusty GPT wisdom, if need to break free.</h2>
+
                             </Stack>
                         ) : (
                             <div className={styles.chatMessageStream} style={{ marginBottom: isLoading ? "40px" : "0px"}} role="log">
@@ -553,13 +568,14 @@ const Chat = () => {
                                     <>
                                         {answer.role === "user" ? (
                                             <div className={styles.chatMessageUser} tabIndex={0}>
-                                                <div className={styles.chatMessageUserMessage}>{answer.content}</div>
+                                                <div className={styles.chatMessageUserMessage}>{answer.content}</div>                                                
                                             </div>
                                         ) : (
                                             answer.role === "assistant" ? <div className={styles.chatMessageGpt}>
                                                 <Answer
                                                     answer={{
                                                         answer: answer.content,
+                                                        question : parseUserMessageFromResponse(messages[index - 2]),
                                                         citations: parseCitationFromMessage(messages[index - 1]),
                                                     }}
                                                     onCitationClicked={c => onShowCitation(c)}
@@ -570,6 +586,7 @@ const Chat = () => {
                                                     <span>Error</span>
                                                 </Stack>
                                                 <span className={styles.chatMessageErrorContent}>{answer.content}</span>
+
                                             </div> : null
                                         )}
                                     </>
@@ -580,6 +597,7 @@ const Chat = () => {
                                             <Answer
                                                 answer={{
                                                     answer: "Generating answer...",
+                                                    question: "",
                                                     citations: []
                                                 }}
                                                 onCitationClicked={() => null}
